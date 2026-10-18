@@ -1,0 +1,45 @@
+# ==============================================================================
+# AGÊNCIA NINJA — DOCKER COMPOSE (Desenvolvimento Local & VPS Standalone)
+# ==============================================================================
+
+services:
+  # Motor de Extração Go com Playwright
+  scraper:
+    image: ${SCRAPER_IMAGE:-gosom/google-maps-scraper:v1.18.1}
+    container_name: ninja-scraper-engine
+    restart: unless-stopped
+    command: ["-web", "-data-folder", "/gmapsdata"]
+    expose:
+      - "8080"
+    volumes:
+      - gmaps_data:/gmapsdata
+      - gmaps_cache:/opt
+    networks:
+      - ninja_internal
+
+  # Dashboard Magnífico & Proxy Reverso Nginx
+  dashboard:
+    image: nginx:1.27-alpine
+    container_name: ninja-scraper-dashboard
+    restart: unless-stopped
+    depends_on:
+      - scraper
+    ports:
+      - "${DASHBOARD_PORT:-8080}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./scraper-proxy.inc:/etc/nginx/conf.d/scraper-proxy.inc:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    networks:
+      - ninja_internal
+
+volumes:
+  gmaps_data:
+    name: ninja_gmaps_data
+  gmaps_cache:
+    name: ninja_gmaps_cache
+
+networks:
+  ninja_internal:
+    name: ninja_scraper_net
+    driver: bridge

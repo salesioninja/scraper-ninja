@@ -1,0 +1,19 @@
+{
+  "description": "Exemplos de chamadas para a Evolution API com leads gerados pela Agência Ninja",
+  "endpoint": "http://evolution-api:8080/message/sendText/{instance_name}",
+  "headers": {
+    "apikey": "SUA_CHAVE_GLOBAL_OU_DA_INSTANCIA",
+    "Content-Type": "application/json"
+  },
+  "example_payload": {
+    "number": "5511999998888",
+    "options": {
+      "delay": 1500,
+      "presence": "composing",
+      "linkPreview": true
+    },
+    "textMessage": {
+      "text": "Olá! Sou da Agência Ninja (Marketing e Automações com IA).\n\nEstive analisando o perfil da empresa *{empresa}* no Google Maps e vi que vocês têm excelentes avaliações ({nota} estrelas). Nós desenvolvemos automações com inteligência artificial para clínicas e empresas locais que aumentam a captação de clientes em até 3x.\n\nGostaria de ver uma demonstração de 2 minutos sem compromisso?"
+    }
+  }
+}

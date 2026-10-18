@@ -1,0 +1,84 @@
+# ==============================================================================
+# AGÊNCIA NINJA — DOCKER SWARM STACK (Produção VPS com Traefik v2/v3)
+# ==============================================================================
+# Comando para deploy na VPS:
+#   docker stack deploy -c docker-stack.yml ninja-scraper
+# ==============================================================================
+
+
+services:
+  # Motor de extração de alta performance
+  scraper:
+    image: ${SCRAPER_IMAGE:-gosom/google-maps-scraper:v1.18.1}
+    command: ["-web", "-data-folder", "/gmapsdata"]
+    volumes:
+      - gmaps_data:/gmapsdata
+      - gmaps_cache:/opt
+    networks:
+      - internal_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 3000M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # Dashboard Web & Proxy Nginx
+  dashboard:
+    image: nginx:1.27-alpine
+    volumes:
+      - /var/www/ninja-scraper/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/www/ninja-scraper/scraper-proxy.inc:/etc/nginx/conf.d/scraper-proxy.inc:ro
+      - /var/www/ninja-scraper/frontend:/usr/share/nginx/html:ro
+    networks:
+      - internal_net
+      - ninja_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=ninja_net"
+        
+        # Roteador HTTPS Principal
+        - "traefik.http.routers.ninja-scraper.rule=Host(`${DOMAIN:-leads.acessaronline.com.br}`)"
+        - "traefik.http.routers.ninja-scraper.entrypoints=websecure"
+        - "traefik.http.routers.ninja-scraper.tls=true"
+        - "traefik.http.routers.ninja-scraper.tls.certresolver=letsencryptresolver"
+        
+        # Service Port (Nginx interno)
+        - "traefik.http.services.ninja-scraper.loadbalancer.server.port=80"
+        
+        # Redirecionamento HTTP -> HTTPS
+        - "traefik.http.routers.ninja-scraper-http.rule=Host(`${DOMAIN:-leads.acessaronline.com.br}`)"
+        - "traefik.http.routers.ninja-scraper-http.entrypoints=web"
+        - "traefik.http.routers.ninja-scraper-http.middlewares=ninja-scraper-redirect"
+        - "traefik.http.middlewares.ninja-scraper-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.ninja-scraper-redirect.redirectscheme.permanent=true"
+
+volumes:
+  gmaps_data:
+    name: ninja_swarm_gmaps_data
+  gmaps_cache:
+    name: ninja_swarm_gmaps_cache
+
+networks:
+  # Rede de comunicação direta entre Nginx e o motor Scraper
+  internal_net:
+    driver: overlay
+    attachable: true
+
+  # Rede pública existente no seu Docker Swarm
+  ninja_net:
+    external: true

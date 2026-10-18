@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agência Ninja — Lead Scraper Pro & Automações com IA</title>
+  <link rel="icon" type="image/png" href="assets/logo-ninja.png">
+  
+  <!-- Estilos e Bibliotecas -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="css/ninja-theme.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Topbar / Cabeçalho da Marca -->
+    <header class="top-header">
+      <div class="brand-wrapper">
+        <img src="assets/logo-ninja.png" alt="Agência Ninja" class="brand-logo-img">
+        <div class="brand-info">
+          <h1 class="text-chrome">AGÊNCIA NINJA</h1>
+          <p>Marketing e Automações com I.A</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="engine-status" class="engine-status-pill">
+          <span class="pulse-dot online"></span>
+          <span class="status-text">Verificando Motor...</span>
+        </div>
+        <button id="btn-trigger-n8n" class="btn-ninja btn-ninja-purple" title="Disparar lote atual para o webhook do n8n">
+          ⚡ Enviar p/ n8n
+        </button>
+        <button id="btn-open-settings" class="btn-ninja-outline" title="Configurar Webhooks, Evolution API e WhatsApp">
+          ⚙️ Ajustes
+        </button>
+        <a href="/classic" class="btn-ninja-outline" title="Acessar interface antiga padrão" target="_blank">
+          Modo Clássico ↗
+        </a>
+      </div>
+    </header>
+
+    <!-- Grid de Métricas Globais (KPIs) -->
+    <section class="kpi-grid">
+      <div class="ninja-card kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Buscas Realizadas</span>
+          <div class="kpi-icon icon-cyan">🎯</div>
+        </div>
+        <div class="kpi-value" id="kpi-total-jobs">0</div>
+        <div class="kpi-footer">
+          <span id="kpi-jobs-hint" class="highlight">0 concluídas</span>
+        </div>
+      </div>
+
+      <div class="ninja-card kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Leads Capturados</span>
+          <div class="kpi-icon icon-purple">🏢</div>
+        </div>
+        <div class="kpi-value" id="kpi-total-leads">0</div>
+        <div class="kpi-footer">
+          <span>Total acumulado de empresas</span>
+        </div>
+      </div>
+
+      <div class="ninja-card kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Com WhatsApp Válido</span>
+          <div class="kpi-icon icon-green">📱</div>
+        </div>
+        <div class="kpi-value" id="kpi-with-wa">0</div>
+        <div class="kpi-footer">
+          <span id="kpi-wa-pct" class="highlight">0% dos leads</span>
+        </div>
+      </div>
+
+      <div class="ninja-card kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-title">Com E-mail Identificado</span>
+          <div class="kpi-icon icon-blue">✉️</div>
+        </div>
+        <div class="kpi-value" id="kpi-with-email">0</div>
+        <div class="kpi-footer">
+          <span id="kpi-email-pct" class="highlight">0% das buscas</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Layout Principal: Central de Coleta + Explorador de Leads -->
+    <main class="main-dashboard-grid">
+      
+      <!-- Coluna da Esquerda: Lançamento de Coletas & Fila -->
+      <aside class="left-panel">
+        
+        <!-- Formulário de Nova Busca -->
+        <div class="ninja-card" style="padding: 24px; margin-bottom: 24px;">
+          <h2 class="panel-section-title">
+            <span>⚡</span> Nova Coleta de Leads
+          </h2>
+
+          <form id="search-form" autocomplete="off">
+            <div class="form-group">
+              <label class="form-label">O que você procura? (Nicho)</label>
+              <input id="keyword-input" type="text" class="ninja-input" placeholder="ex.: Dentistas, Clínicas de Estética, Imobiliárias">
+              <div class="quick-tags">
+                <button type="button" class="tag-btn" data-niche="Dentistas">Odontologia</button>
+                <button type="button" class="tag-btn" data-niche="Clínicas Médicas">Médicos</button>
+                <button type="button" class="tag-btn" data-niche="Imobiliárias">Imobiliárias</button>
+                <button type="button" class="tag-btn" data-niche="Advocacia">Advogados</button>
+                <button type="button" class="tag-btn" data-niche="Clínica Estética">Estética</button>
+                <button type="button" class="tag-btn" data-niche="Concessionárias">Carros</button>
+                <button type="button" class="tag-btn" data-niche="Energia Solar">Solar</button>
+                <button type="button" class="tag-btn" data-niche="Restaurantes">Gastronomia</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Onde procurar? (Cidade / Bairro)</label>
+              <input id="location-input" type="text" class="ninja-input" placeholder="ex.: Barra Funda, São Paulo ou Curitiba PR">
+              <div class="radius-slider-wrap">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Raio:</span>
+                <input id="radius-slider" type="range" class="radius-slider" min="1" max="50" step="1" value="15">
+                <span id="radius-val" class="radius-val-badge">15 km</span>
+              </div>
+              <div id="mini-map" class="mini-map-preview" style="display: none;"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quantidade de Leads Estimada</label>
+              <div class="depth-selector">
+                <button type="button" class="depth-btn" data-depth="5">20</button>
+                <button type="button" class="depth-btn active" data-depth="15">60</button>
+                <button type="button" class="depth-btn" data-depth="30">120</button>
+                <button type="button" class="depth-btn" data-depth="60">250</button>
+                <button type="button" class="depth-btn" data-depth="100">500+</button>
+              </div>
+            </div>
+
+            <div class="options-toggle-group">
+              <label class="toggle-label" title="Pesquisa termos complementares do mesmo nicho para encontrar clínicas e profissionais com outras nomenclaturas">
+                <span>⚡ Busca Expandida de Sinônimos (Mais Leads)</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="opt-synonyms" checked>
+                  <span class="switch-slider"></span>
+                </div>
+              </label>
+
+              <label class="toggle-label">
+                <span>Varredura profunda de e-mails nos sites</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="opt-email" checked>
+                  <span class="switch-slider"></span>
+                </div>
+              </label>
+
+              <label class="toggle-label">
+                <span>Modo Turbo (Fast Mode)</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="opt-fast">
+                  <span class="switch-slider"></span>
+                </div>
+              </label>
+            </div>
+
+            <button type="submit" id="btn-submit-job" class="btn-ninja" style="width: 100%; padding: 14px; font-size: 1rem;">
+              🚀 Iniciar Coleta Ninja
+            </button>
+          </form>
+        </div>
+
+        <!-- Fila de Buscas & Histórico -->
+        <div class="ninja-card" style="padding: 22px;">
+          <h2 class="panel-section-title" style="font-size: 1.05rem;">
+            <span>📂</span> Histórico & Fila de Processamento
+          </h2>
+          <div id="jobs-list" class="jobs-list">
+            <!-- Renderizado dinamicamente via app.js -->
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Coluna da Direita: Explorador e Gestor de Leads Pro -->
+      <section class="ninja-card results-section" style="padding: 26px;">
+        
+        <div class="results-header-bar">
+          <div class="results-title-group">
+            <h2 id="active-job-title" class="text-gradient">Selecione uma Busca</h2>
+            <p id="active-job-subtitle">Selecione uma coleta à esquerda para visualizar e filtrar seus leads</p>
+          </div>
+
+          <div class="results-actions-group">
+            <button id="btn-export-excel" class="btn-ninja" style="padding: 8px 16px; font-size: 0.85rem;" title="Download formato CSV com separador ; pronto para abrir no Excel pt-BR">
+              📊 Excel Pro (.csv)
+            </button>
+            <button id="btn-export-sheets" class="btn-ninja-outline" style="padding: 8px 14px; font-size: 0.82rem;" title="Download padrão para Google Sheets">
+              📄 Sheets
+            </button>
+            <button id="btn-copy-tsv" class="btn-ninja-outline" style="padding: 8px 14px; font-size: 0.82rem;" title="Copiar linhas para colar direto em qualquer planilha (Ctrl+V)">
+              📋 Copiar
+            </button>
+          </div>
+        </div>
+
+        <!-- Barra de Filtros Rápidos -->
+        <div class="table-filters-bar">
+          <div class="search-input-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-leads" class="ninja-input" placeholder="Filtrar por nome, telefone, rua, e-mail...">
+          </div>
+
+          <select id="filter-category" class="filter-select">
+            <option value="">Todas as Categorias</option>
+          </select>
+
+          <label class="filter-pill-check">
+            <input type="checkbox" id="filter-only-wa">
+            <span>Apenas WhatsApp</span>
+          </label>
+
+          <label class="filter-pill-check">
+            <input type="checkbox" id="filter-only-email">
+            <span>Apenas E-mail</span>
+          </label>
+
+          <label class="filter-pill-check">
+            <input type="checkbox" id="filter-only-site">
+            <span>Apenas com Site</span>
+          </label>
+
+          <label class="filter-pill-check">
+            <input type="checkbox" id="filter-dedupe" checked>
+            <span>Deduplicar</span>
+          </label>
+
+          <span id="filtered-count" style="font-size: 0.8rem; color: var(--neon-cyan); margin-left: auto; font-weight: 600;">0 leads</span>
+        </div>
+
+        <!-- Tabela de Leads -->
+        <div class="leads-table-container">
+          <table class="ninja-table">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Contatos & WhatsApp</th>
+                <th>Avaliação Google</th>
+                <th>Endereço</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="leads-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                  Nenhuma busca selecionada. Crie uma nova busca ou clique no histórico à esquerda.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Modal de Configurações Ninja -->
+  <div id="modal-settings" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 style="font-size: 1.25rem;" class="text-gradient">⚙️ Configurações & Integrações Ninja</h2>
+        <button id="btn-close-settings" class="modal-close-btn">&times;</button>
+      </div>
+
+      <form id="settings-form">
+        <div class="form-group">
+          <label class="form-label">URL do Webhook do n8n</label>
+          <input type="url" id="cfg-n8n-url" class="ninja-input" placeholder="https://n8n.seudominio.com.br/webhook/ninja-leads">
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Para onde os leads serão enviados ao clicar no botão "Enviar p/ n8n".</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">URL da Evolution API (VPS)</label>
+          <input type="url" id="cfg-evolution-url" class="ninja-input" placeholder="http://evolution-api:8080">
+        </div>
+
+        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label class="form-label">Nome da Instância</label>
+            <input type="text" id="cfg-evolution-inst" class="ninja-input" placeholder="ninja-comercial">
+          </div>
+          <div>
+            <label class="form-label">API Key da Evolution</label>
+            <input type="password" id="cfg-evolution-key" class="ninja-input" placeholder="Sua chave de API">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mensagem Padrão de Abordagem WhatsApp</label>
+          <textarea id="cfg-wa-msg" class="ninja-input" rows="4" style="resize: vertical; font-size: 0.85rem;"></textarea>
+          <small style="color: var(--text-muted); font-size: 0.75rem;">Tags dinâmicas: {empresa}, {categoria}, {nota}, {cidade}</small>
+        </div>
+
+        <button type="submit" class="btn-ninja" style="width: 100%; padding: 12px;">
+          Salvar Configurações
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notificação Flutuante -->
+  <div id="ninja-toast" class="ninja-toast"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/automations.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

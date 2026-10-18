@@ -1,0 +1,109 @@
+{
+  "name": "Agência Ninja — Receptor e Qualificador de Leads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ninja-leads",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Ninja Leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai e formata os leads recebidos do Agência Ninja Scraper\nconst payload = $input.first().json.body || $input.first().json;\nconst leads = payload.leads || [];\nconst jobName = payload.job_name || 'Coleta Ninja';\nconst timestamp = payload.timestamp || new Date().toISOString();\n\nconst enrichedLeads = leads.map((lead, idx) => {\n  const rawPhone = String(lead.phone || '').replace(/\\D/g, '');\n  let cleanPhone = rawPhone;\n  if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {\n    cleanPhone = cleanPhone.slice(2);\n  }\n  \n  const isMobile = cleanPhone.length === 11 && cleanPhone[2] === '9';\n  const waNumber = isMobile ? `55${cleanPhone}` : '';\n  \n  return {\n    json: {\n      id: idx + 1,\n      job_name: jobName,\n      received_at: timestamp,\n      empresa: lead.title || '',\n      categoria: lead.category || '',\n      telefone: lead.phone || '',\n      telefone_limpo: cleanPhone,\n      whatsapp_valido: isMobile,\n      whatsapp_numero: waNumber,\n      email: lead.emails || '',\n      website: lead.website || '',\n      nota: parseFloat(lead.review_rating) || 0,\n      avaliacoes: parseInt(lead.review_count) || 0,\n      endereco: lead.address || '',\n      maps_link: lead.link || '',\n      instagram: lead.instagram || '',\n      facebook: lead.facebook || '',\n      linkedin: lead.linkedin || '',\n      mensagem_abordagem: `Olá! Sou da Agência Ninja. Estive analisando o perfil da empresa ${lead.title || ''} no Google Maps e identifiquei excelentes oportunidades para escalar a captação de clientes de vocês com IA e automação.`\n    }\n  };\n});\n\nreturn enrichedLeads;"
+      },
+      "id": "2",
+      "name": "Formatar e Qualificar Leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.whatsapp_valido }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Tem WhatsApp Válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/ninja-comercial",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "SUA_APIKEY_EVOLUTION_AQUI"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.whatsapp_numero }}\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  },\n  \"textMessage\": {\n    \"text\": \"{{ $json.mensagem_abordagem }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Disparar Evolution API (Opcional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [960, 220]
+    }
+  ],
+  "connections": {
+    "Webhook Ninja Leads": {
+      "main": [
+        [
+          {
+            "node": "Formatar e Qualificar Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar e Qualificar Leads": {
+      "main": [
+        [
+          {
+            "node": "Tem WhatsApp Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem WhatsApp Válido?": {
+      "main": [
+        [
+          {
+            "node": "Disparar Evolution API (Opcional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}
