@@ -100,7 +100,19 @@
             <span>⚡</span> Nova Coleta de Leads
           </h2>
 
-          <form id="search-form" autocomplete="off">
+          <!-- Seletor de Fonte: Google Maps vs Guia Comercial G123 -->
+          <div class="source-tabs-container">
+            <button type="button" class="source-tab active" data-source="gmaps">
+              <span class="tab-icon">🗺️</span> Google Maps
+            </button>
+            <button type="button" class="source-tab" data-source="g123">
+              <span class="tab-icon">📖</span> Guia Comercial G123
+              <span class="tab-badge">Turbo</span>
+            </button>
+          </div>
+
+          <!-- Formulário 1: Google Maps (Nacional) -->
+          <form id="search-form" class="source-form" autocomplete="off">
             <div class="form-group">
               <label class="form-label">O que você procura? (Nicho)</label>
               <input id="keyword-input" type="text" class="ninja-input" placeholder="ex.: Dentistas, Clínicas de Estética, Imobiliárias">
@@ -165,7 +177,64 @@
             </div>
 
             <button type="submit" id="btn-submit-job" class="btn-ninja" style="width: 100%; padding: 14px; font-size: 1rem;">
-              🚀 Iniciar Coleta Ninja
+              🚀 Iniciar Coleta Google Maps
+            </button>
+          </form>
+
+          <!-- Formulário 2: Guia Comercial G123 (Sudoeste PR & SC) -->
+          <form id="search-form-g123" class="source-form" style="display: none;" autocomplete="off">
+            <div class="form-group">
+              <label class="form-label">Cidade / Região do Catálogo (PR & SC)</label>
+              <select id="g123-city-select" class="ninja-input" style="width: 100%; height: 46px; cursor: pointer;">
+                <!-- Opções de cidades inseridas via JS -->
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">O que procura? (Nicho / Ramo Opcional)</label>
+              <input id="g123-keyword-input" type="text" class="ninja-input" placeholder="ex.: Dentistas, Mecânica, Posto, Farmácia (ou vazio p/ geral)">
+              <div class="quick-tags">
+                <button type="button" class="tag-btn-g123" data-niche="Dentistas">Dentistas</button>
+                <button type="button" class="tag-btn-g123" data-niche="Mecânica">Mecânica</button>
+                <button type="button" class="tag-btn-g123" data-niche="Posto">Posto</button>
+                <button type="button" class="tag-btn-g123" data-niche="Farmácia">Farmácia</button>
+                <button type="button" class="tag-btn-g123" data-niche="Supermercado">Mercado</button>
+                <button type="button" class="tag-btn-g123" data-niche="Advocacia">Advogados</button>
+                <button type="button" class="tag-btn-g123" data-niche="Imobiliária">Imóveis</button>
+                <button type="button" class="tag-btn-g123" data-niche="">Todos</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Quantidade de Páginas (70 leads por página)</label>
+              <div class="depth-selector depth-selector-g123">
+                <button type="button" class="depth-btn-g123 active" data-pages="1">1 Pág (~70)</button>
+                <button type="button" class="depth-btn-g123" data-pages="3">3 Págs (~200)</button>
+                <button type="button" class="depth-btn-g123" data-pages="5">5 Págs (~350)</button>
+                <button type="button" class="depth-btn-g123" data-pages="10">10 Págs (700+)</button>
+              </div>
+            </div>
+
+            <div class="options-toggle-group">
+              <label class="toggle-label" title="Filtra apenas contatos de celular com WhatsApp">
+                <span>📱 Apenas Celulares com WhatsApp</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="g123-opt-wa">
+                  <span class="switch-slider"></span>
+                </div>
+              </label>
+
+              <label class="toggle-label" title="Baixa os contatos do Guia Comercial em alta velocidade">
+                <span>⚡ Modo Turbo Regional</span>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="g123-opt-turbo" checked>
+                  <span class="switch-slider"></span>
+                </div>
+              </label>
+            </div>
+
+            <button type="submit" id="btn-submit-g123" class="btn-ninja btn-ninja-purple" style="width: 100%; padding: 14px; font-size: 1rem;">
+              ⚡ Extrair Leads do Guia G123
             </button>
           </form>
         </div>
@@ -317,6 +386,7 @@
   <script src="js/api.js"></script>
   <script src="js/automations.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/g123.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
