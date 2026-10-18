@@ -17,39 +17,43 @@
     radius: 15,
     depth: 15,
     currentSource: "gmaps",
-    g123Pages: 1,
+    webPages: 1,
     isSubmitting: false,
     pollTimer: null,
     isDemo: false
   };
 
-  const G123_JOBS_KEY = "ninja_g123_jobs_v1";
+  const WEB_JOBS_KEY = "ninja_web_jobs_v1";
 
-  const loadG123Jobs = () => {
+  const loadWebJobs = () => {
     try {
-      return JSON.parse(localStorage.getItem(G123_JOBS_KEY) || "[]");
+      const web = JSON.parse(localStorage.getItem(WEB_JOBS_KEY) || "[]");
+      const g123 = JSON.parse(localStorage.getItem("ninja_g123_jobs_v1") || "[]");
+      const map = new Map();
+      [...web, ...g123].forEach(j => map.set(j.id, j));
+      return Array.from(map.values());
     } catch {
       return [];
     }
   };
 
-  const saveG123Jobs = (jobs) => {
+  const saveWebJobs = (jobs) => {
     try {
-      localStorage.setItem(G123_JOBS_KEY, JSON.stringify(jobs));
+      localStorage.setItem(WEB_JOBS_KEY, JSON.stringify(jobs));
     } catch {}
   };
 
-  const loadG123Leads = (jobId) => {
+  const loadWebLeads = (jobId) => {
     try {
-      return JSON.parse(localStorage.getItem(`ninja_g123_leads_${jobId}`) || "[]");
+      return JSON.parse(localStorage.getItem(`ninja_web_leads_${jobId}`) || localStorage.getItem(`ninja_g123_leads_${jobId}`) || "[]");
     } catch {
       return [];
     }
   };
 
-  const saveG123Leads = (jobId, leads) => {
+  const saveWebLeads = (jobId, leads) => {
     try {
-      localStorage.setItem(`ninja_g123_leads_${jobId}`, JSON.stringify(leads));
+      localStorage.setItem(`ninja_web_leads_${jobId}`, JSON.stringify(leads));
     } catch {}
   };
 
@@ -96,11 +100,11 @@
         .join("_");
     };
 
-    // Caso seja busca do Guia Comercial G123
-    if (job.source === "g123" || String(job.id).startsWith("g123")) {
+    // Caso seja busca do Extrator Web por Link
+    if (job.source === "web" || job.source === "g123" || String(job.id).startsWith("web-") || String(job.id).startsWith("g123-")) {
       const cleanNiche = formatSegment(job.term || "Geral");
-      const cleanCity = formatSegment(job.cityName || "Regional");
-      return `Leads-G123-${cleanNiche}-${cleanCity}-${dateStr}`;
+      const cleanPlace = formatSegment(job.placeName || job.cityName || "Web");
+      return `Leads-Web-${cleanNiche}-${cleanPlace}-${dateStr}`;
     }
 
     let niche = "Leads";
@@ -327,16 +331,16 @@
         }
       }
 
-      const localG123 = loadG123Jobs();
-      localG123.forEach(gj => {
-        if (!state.stats[gj.id]) {
-          const l = loadG123Leads(gj.id);
+      const localWeb = loadWebJobs();
+      localWeb.forEach(wj => {
+        if (!state.stats[wj.id]) {
+          const l = loadWebLeads(wj.id);
           const wa = l.filter(x => x.has_whatsapp || NinjaAutomations.getWhatsAppNumber(x.phone)).length;
-          state.stats[gj.id] = { total: l.length, wa, email: 0, site: 0 };
+          state.stats[wj.id] = { total: l.length, wa, email: 0, site: 0 };
         }
       });
 
-      const merged = [...localG123, ...backendJobs].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const merged = [...localWeb, ...backendJobs].sort((a, b) => new Date(b.date) - new Date(a.date));
       state.jobs = merged.length > 0 ? merged : (state.isDemo ? DEMO_JOBS : []);
       renderJobsList();
       updateGlobalKPIs();
@@ -345,7 +349,7 @@
       if (!state.activeJobId && state.jobs.length > 0) {
         const firstOk = state.jobs.find(j => j.status === "ok");
         if (firstOk) selectJob(firstOk.id);
-      } else if (state.activeJobId && !String(state.activeJobId).startsWith("g123")) {
+      } else if (state.activeJobId && !String(state.activeJobId).startsWith("web") && !String(state.activeJobId).startsWith("g123")) {
         // Se a busca Google Maps que está aberta acabou de finalizar, recarrega a tabela na hora!
         const prevActive = prevJobs.find(j => j.id === state.activeJobId);
         const currActive = state.jobs.find(j => j.id === state.activeJobId);
@@ -363,8 +367,8 @@
 
   function initDemoMode() {
     state.isDemo = true;
-    const localG123 = loadG123Jobs();
-    state.jobs = [...localG123, ...DEMO_JOBS];
+    const localWeb = loadWebJobs();
+    state.jobs = [...localWeb, ...DEMO_JOBS];
     state.stats["demo-1"] = { total: 5, wa: 5, email: 5, site: 5 };
     state.stats["demo-2"] = { total: 3, wa: 3, email: 3, site: 3 };
     state.stats["demo-3"] = { total: 0, wa: 0, email: 0, site: 0 };
@@ -381,8 +385,8 @@
     const text = el.querySelector(".status-text");
     if (state.isDemo) {
       dot.className = "pulse-dot online";
-      text.textContent = "Motor Online & G123 Ativo";
-      el.title = "Visualizando motor híbrido (Google Maps + Guia G123).";
+      text.textContent = "Motor Online & Extrator Web Ativo";
+      el.title = "Visualizando motor híbrido (Google Maps + Extrator Web).";
     } else if (isOnline) {
       dot.className = "pulse-dot online";
       text.textContent = "Motor Híbrido Online";
@@ -442,9 +446,9 @@
       const jobStat = state.stats[j.id];
       const countDisplay = jobStat && jobStat.total != null ? `<b>${fmt(jobStat.total)}</b><span>leads</span>` : "";
 
-      const isG123 = j.source === "g123" || String(j.id).startsWith("g123");
-      const sourceBadge = isG123
-        ? '<span class="job-source-tag g123">G123</span>'
+      const isWeb = j.source === "web" || j.source === "g123" || String(j.id).startsWith("web-") || String(j.id).startsWith("g123-");
+      const sourceBadge = isWeb
+        ? '<span class="job-source-tag weblink">Web</span>'
         : '<span class="job-source-tag gmaps">GMaps</span>';
 
       return `
@@ -477,15 +481,15 @@
     const job = state.jobs.find(j => j.id === jobId);
     if (!job) return;
 
-    const isG123 = job.source === "g123" || String(jobId).startsWith("g123");
+    const isWeb = job.source === "web" || job.source === "g123" || String(jobId).startsWith("web-") || String(jobId).startsWith("g123");
 
-    // Tratamento para buscas do Guia Comercial G123
-    if (isG123) {
-      $("#active-job-title").textContent = job.name || "Guia Comercial G123";
+    // Tratamento para buscas do Extrator Web por Link
+    if (isWeb) {
+      $("#active-job-title").textContent = job.name || "Extrator Web";
       const statusText = job.status === "working" 
-        ? "⚡ Extraindo do Guia Comercial G123..." 
+        ? "⚡ Extraindo Contatos do Link..." 
         : `Concluído ${timeAgo(job.date)}`;
-      $("#active-job-subtitle").textContent = `${job.cityName || "Catálogo Regional"} · ${statusText}`;
+      $("#active-job-subtitle").textContent = `${job.urlDomain || job.cityName || "Varredura Web"} · ${statusText}`;
 
       if (job.status === "working") {
         $("#leads-table-body").innerHTML = `
@@ -493,11 +497,11 @@
             <td colspan="6" style="text-align: center; padding: 50px 20px;">
               <div style="display: inline-block; width: 42px; height: 42px; border: 3px solid rgba(157, 78, 221, 0.2); border-top-color: var(--neon-purple-soft); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 15px;"></div>
               <div style="font-size: 1.15rem; font-weight: 700; color: var(--neon-purple-soft); margin-bottom: 8px;">
-                ⚡ Extraindo Leads do Guia Comercial G123...
+                ⚡ Extraindo Contatos da Web...
               </div>
               <div style="color: var(--text-secondary); font-size: 0.9rem; max-width: 500px; margin: 0 auto; line-height: 1.6;">
-                Baixando páginas do catálogo e identificando telefones e WhatsApp.<br>
-                <span id="g123-live-status" style="color: var(--neon-cyan); font-weight: 600; font-size: 0.85rem;">Conectando ao catálogo...</span>
+                Varrendo páginas do link e identificando telefones e WhatsApp.<br>
+                <span id="web-live-status" style="color: var(--neon-cyan); font-weight: 600; font-size: 0.85rem;">Conectando ao site...</span>
               </div>
             </td>
           </tr>
@@ -505,10 +509,11 @@
         return;
       }
 
-      const leads = loadG123Leads(jobId);
+      const leads = loadWebLeads(jobId);
       state.leads = leads;
       const waCount = leads.filter(l => l.has_whatsapp || NinjaAutomations.getWhatsAppNumber(l.phone)).length;
-      state.stats[jobId] = { total: leads.length, wa: waCount, email: 0, site: 0 };
+      const emailCount = leads.filter(l => (l.emails && (Array.isArray(l.emails) ? l.emails.length > 0 : String(l.emails).includes("@")))).length;
+      state.stats[jobId] = { total: leads.length, wa: waCount, email: emailCount, site: 0 };
       populateCategories(leads);
       applyFilters();
       updateGlobalKPIs();
@@ -818,61 +823,75 @@
   }
 
   // ============================================================================
-  // CRIAÇÃO DE BUSCA NO GUIA COMERCIAL G123 (TURBO REGIONAL)
+  // CRIAÇÃO DE BUSCA NO EXTRATOR WEB POR LINK / URL (UNIVERSAL)
   // ============================================================================
 
-  async function handleCreateG123Job(e) {
+  async function handleCreateWebJob(e) {
     e.preventDefault();
     if (state.isSubmitting) return;
 
-    const citySelect = $("#g123-city-select");
-    const keywordInput = $("#g123-keyword-input");
-    const citySlug = citySelect ? citySelect.value : "salto-do-lontra-pr";
-    const cityName = citySelect && citySelect.options[citySelect.selectedIndex] ? citySelect.options[citySelect.selectedIndex].text : citySlug;
-    const term = (keywordInput.value || "").trim();
-    const maxPages = state.g123Pages || 1;
-    const onlyWa = $("#g123-opt-wa") ? $("#g123-opt-wa").checked : false;
+    const urlInput = $("#web-url-input");
+    const keywordInput = $("#web-keyword-input");
+    const targetUrl = (urlInput.value || "").trim();
+    const keyword = (keywordInput.value || "").trim();
+    const maxPages = state.webPages || 1;
+    const onlyWa = $("#web-opt-wa") ? $("#web-opt-wa").checked : false;
 
-    const submitBtn = $("#btn-submit-g123");
+    if (!targetUrl) {
+      showToast("Informe o link ou URL que deseja varrer.");
+      urlInput.focus();
+      return;
+    }
+
+    const submitBtn = $("#btn-submit-web");
     state.isSubmitting = true;
     submitBtn.disabled = true;
-    submitBtn.textContent = "⚡ Extraindo Leads...";
+    submitBtn.textContent = "⚡ Extraindo Contatos...";
 
-    const jobId = `g123-${Date.now()}`;
-    const cleanTermName = term ? term.charAt(0).toUpperCase() + term.slice(1) : "Geral";
-    const jobName = `G123 · ${cleanTermName} (${cityName.split(" - ")[0]})`;
+    let domain = "";
+    try {
+      const u = new URL(targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`);
+      domain = u.hostname.replace(/^www\./, "");
+    } catch {
+      domain = "Link Web";
+    }
+
+    const jobId = `web-${Date.now()}`;
+    const cleanKw = keyword ? keyword.charAt(0).toUpperCase() + keyword.slice(1) : "Todos";
+    const jobName = `Web · ${cleanKw} (${domain})`;
 
     const newJob = {
       id: jobId,
       name: jobName,
       date: new Date().toISOString(),
       status: "working",
-      source: "g123",
-      cityName: cityName,
-      term: term,
-      keywords: [term ? `${term} em ${cityName}` : `Catálogo Completo de ${cityName}`],
+      source: "web",
+      urlDomain: domain,
+      targetUrl: targetUrl,
+      term: keyword,
+      keywords: [keyword ? `${keyword} em ${domain}` : `Varredura Completa de ${domain}`],
       depth: maxPages
     };
 
     // Salva no storage imediatamente para aparecer na fila
-    const g123Jobs = loadG123Jobs();
-    g123Jobs.unshift(newJob);
-    saveG123Jobs(g123Jobs);
+    const webJobs = loadWebJobs();
+    webJobs.unshift(newJob);
+    saveWebJobs(webJobs);
 
     state.jobs.unshift(newJob);
     state.activeJobId = jobId;
     renderJobsList();
     selectJob(jobId);
-    showToast(`⚡ Iniciando extração no Guia Comercial para ${cityName}...`, 4000);
+    showToast(`⚡ Iniciando extração web em ${domain}...`, 4000);
 
     try {
-      const leads = await NinjaG123.scrape({
-        citySlug: citySlug,
-        term: term,
+      const leads = await NinjaWebScraper.scrape({
+        url: targetUrl,
+        keyword: keyword,
         maxPages: maxPages,
         onlyWhatsApp: onlyWa,
         onProgress: (prog) => {
-          const statusEl = $("#g123-live-status");
+          const statusEl = $("#web-live-status");
           if (statusEl) {
             statusEl.textContent = `${prog.status} (${prog.leadsFound} contatos encontrados)`;
           }
@@ -880,25 +899,26 @@
       });
 
       newJob.status = "ok";
-      saveG123Leads(jobId, leads);
-      saveG123Jobs(g123Jobs);
+      saveWebLeads(jobId, leads);
+      saveWebJobs(webJobs);
 
       const waCount = leads.filter(l => l.has_whatsapp || NinjaAutomations.getWhatsAppNumber(l.phone)).length;
-      state.stats[jobId] = { total: leads.length, wa: waCount, email: 0, site: 0 };
+      const emailCount = leads.filter(l => (l.emails && (Array.isArray(l.emails) ? l.emails.length > 0 : String(l.emails).includes("@")))).length;
+      state.stats[jobId] = { total: leads.length, wa: waCount, email: emailCount, site: 0 };
 
       renderJobsList();
       selectJob(jobId);
       updateGlobalKPIs();
-      showToast(`🎉 ${leads.length} leads extraídos com sucesso do Guia Comercial!`, 5000);
+      showToast(`🎉 ${leads.length} contatos extraídos com sucesso!`, 5000);
     } catch (err) {
       newJob.status = "failed";
-      saveG123Jobs(g123Jobs);
+      saveWebJobs(webJobs);
       renderJobsList();
-      showToast(`Erro na extração G123: ${err.message}`, 6000);
+      showToast(`Erro na extração web: ${err.message}`, 6000);
     } finally {
       state.isSubmitting = false;
       submitBtn.disabled = false;
-      submitBtn.textContent = "⚡ Extrair Leads do Guia G123";
+      submitBtn.textContent = "🚀 Extrair Contatos do Link";
     }
   }
 
@@ -907,52 +927,53 @@
   // ============================================================================
 
   function bindEvents() {
-    // Alternância de fonte (Google Maps vs Guia Comercial G123)
+    // Alternância de fonte (Google Maps vs Extrator Web por Link)
     $$(".source-tab").forEach(tab => {
       tab.addEventListener("click", () => {
         $$(".source-tab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         const src = tab.dataset.source;
         state.currentSource = src;
-        if (src === "g123") {
+        if (src === "web") {
           $("#search-form").style.display = "none";
-          $("#search-form-g123").style.display = "block";
+          $("#search-form-web").style.display = "block";
         } else {
           $("#search-form").style.display = "block";
-          $("#search-form-g123").style.display = "none";
+          $("#search-form-web").style.display = "none";
         }
       });
     });
 
-    // Popula o select de cidades do G123
-    const citySel = $("#g123-city-select");
-    if (citySel && typeof NinjaG123 !== "undefined") {
-      citySel.innerHTML = NinjaG123.getCities().map(c => 
-        `<option value="${c.slug}" ${c.slug === "salto-do-lontra-pr" ? "selected" : ""}>${c.name}</option>`
-      ).join("");
-    }
-
-    // Tags de nichos do G123
-    $$(".tag-btn-g123").forEach(btn => {
+    // Exemplos rápidos de links Web
+    $$(".url-example-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        const inp = $("#g123-keyword-input");
+        const inp = $("#web-url-input");
+        inp.value = btn.dataset.url || "";
+        inp.focus();
+      });
+    });
+
+    // Tags de nichos rápidos Web
+    $$(".tag-btn-web").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const inp = $("#web-keyword-input");
         inp.value = btn.dataset.niche || "";
         inp.focus();
       });
     });
 
-    // Seletor de páginas do G123
-    $$(".depth-btn-g123").forEach(btn => {
+    // Seletor de páginas Web
+    $$(".depth-btn-web").forEach(btn => {
       btn.addEventListener("click", () => {
-        $$(".depth-btn-g123").forEach(b => b.classList.remove("active"));
+        $$(".depth-btn-web").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
-        state.g123Pages = parseInt(btn.dataset.pages) || 1;
+        state.webPages = parseInt(btn.dataset.pages) || 1;
       });
     });
 
     // Submissão dos Formulários
     $("#search-form").addEventListener("submit", handleCreateJob);
-    $("#search-form-g123").addEventListener("submit", handleCreateG123Job);
+    $("#search-form-web").addEventListener("submit", handleCreateWebJob);
 
     // Tags de nichos rápidos Google Maps
     $$(".tag-btn").forEach(btn => {
@@ -1008,12 +1029,13 @@
       const jobId = jobItem.dataset.id;
       if (delBtn) {
         if (confirm("Deseja realmente apagar esta busca do histórico?")) {
-          if (String(jobId).startsWith("g123")) {
-            const updatedG123 = loadG123Jobs().filter(j => j.id !== jobId);
-            saveG123Jobs(updatedG123);
+          if (String(jobId).startsWith("web-") || String(jobId).startsWith("g123")) {
+            const updatedWeb = loadWebJobs().filter(j => j.id !== jobId);
+            saveWebJobs(updatedWeb);
+            localStorage.removeItem(`ninja_web_leads_${jobId}`);
             localStorage.removeItem(`ninja_g123_leads_${jobId}`);
             delete state.stats[jobId];
-            showToast("Busca do Guia G123 removida.");
+            showToast("Busca removida do histórico.");
             if (state.activeJobId === jobId) state.activeJobId = null;
             await refreshJobs();
             return;

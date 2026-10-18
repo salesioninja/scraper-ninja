@@ -233,6 +233,7 @@
   box-shadow: 0 0 15px rgba(0, 245, 212, 0.3);
 }
 
+.source-tab[data-source="web"].active,
 .source-tab[data-source="g123"].active {
   background: linear-gradient(135deg, #c77dff 0%, #9d4edd 50%, #00f5d4 100%);
   color: #ffffff;
@@ -256,7 +257,34 @@
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* Tags e botões do G123 */
+/* Exemplos rápidos de URLs */
+.quick-examples-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.url-example-btn {
+  background: rgba(157, 78, 221, 0.12);
+  border: 1px solid rgba(157, 78, 221, 0.3);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  color: #d8b4fe;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.url-example-btn:hover {
+  background: rgba(157, 78, 221, 0.25);
+  border-color: var(--neon-purple-soft);
+  color: #ffffff;
+}
+
+/* Tags e botões do Extrator Web */
+.tag-btn-web,
 .tag-btn-g123 {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-subtle);
@@ -268,16 +296,19 @@
   transition: all var(--transition-fast);
 }
 
+.tag-btn-web:hover,
 .tag-btn-g123:hover {
   background: rgba(157, 78, 221, 0.15);
   border-color: var(--neon-purple-soft);
   color: var(--neon-purple-soft);
 }
 
+.depth-selector-web,
 .depth-selector-g123 {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.depth-btn-web,
 .depth-btn-g123 {
   background: transparent;
   border: none;
@@ -290,10 +321,12 @@
   transition: all var(--transition-fast);
 }
 
+.depth-btn-web:hover,
 .depth-btn-g123:hover {
   color: #ffffff;
 }
 
+.depth-btn-web.active,
 .depth-btn-g123.active {
   background: linear-gradient(135deg, #c77dff 0%, #9d4edd 100%);
   color: #ffffff;
@@ -311,6 +344,7 @@
   display: inline-block;
 }
 
+.job-source-tag.weblink,
 .job-source-tag.g123 {
   background: rgba(157, 78, 221, 0.18);
   color: #d8b4fe;
